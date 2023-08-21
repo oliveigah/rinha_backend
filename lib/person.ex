@@ -12,13 +12,21 @@ defmodule Person do
   def create_table() do
     node_list = [node()]
 
-    :mnesia.create_table(__MODULE__,
-      attributes: @attr,
-      disc_copies: node_list,
-      type: :set,
-      index: [:apelido]
-    )
-    |> verify_transaction()
+    result =
+      :mnesia.create_table(__MODULE__,
+        attributes: @attr,
+        disc_copies: node_list,
+        type: :set,
+        index: [:apelido]
+      )
+
+    case result do
+      {:atomic, :ok} ->
+        :ok
+
+      {:aborted, {:already_exists, _table_name}} ->
+        :ok
+    end
   end
 
   def get_str_attr, do: @str_attr
@@ -95,16 +103,6 @@ defmodule Person do
   def clear_tables() do
     :ok = FTSIndex.clear_tables()
     {:atomic, :ok} = :mnesia.clear_table(__MODULE__)
-  end
-
-  defp verify_transaction(result) do
-    case result do
-      {:atomic, :ok} ->
-        :ok
-
-      {:aborted, {:already_exists, _table_name}} ->
-        :ok
-    end
   end
 
   defp vals_to_map(vals), do: @attr |> Enum.zip(vals) |> Map.new()

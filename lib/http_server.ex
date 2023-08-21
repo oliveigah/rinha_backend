@@ -91,9 +91,7 @@ defmodule HttpServer do
 
     case conn.query_params do
       %{"t" => val} ->
-        data =
-          rpc(Person, :full_text_search, [val])
-          |> IO.inspect()
+        data = rpc(Person, :full_text_search, [val])
 
         conn
         |> put_resp_content_type("application/json")

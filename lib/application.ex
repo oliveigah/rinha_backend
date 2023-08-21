@@ -5,12 +5,18 @@ defmodule RinhaBackend.Application do
 
   use Application
 
+  require Logger
+
   @impl true
   def start(_type, _args) do
+    File.mkdir_p(Application.get_env(:mnesia, :dir))
+
+    connect_to_cluster()
     init_node()
 
     children = [
-      {Bandit, plug: HttpServer}
+      NodeMonitor,
+      {Bandit, plug: HttpServer, port: System.fetch_env!("HTTP_SERVER_PORT")}
     ]
 
     opts = [strategy: :one_for_one, name: RinhaBackend.Supervisor]
@@ -18,23 +24,38 @@ defmodule RinhaBackend.Application do
   end
 
   defp init_node() do
-    File.mkdir_p(Application.get_env(:mnesia, :dir))
+    if Node.list() == [] do
+      :mnesia.create_schema([node()])
 
-    :mnesia.create_schema([node()])
+      case :mnesia.change_table_copy_type(:schema, node(), :disc_copies) do
+        {:atomic, :ok} ->
+          :ok
 
-    case :mnesia.change_table_copy_type(:schema, node(), :disc_copies) do
-      {:atomic, :ok} ->
-        :ok
+        {:aborted, {:already_exists, _table, _node, _type}} ->
+          :ok
+      end
 
-      {:aborted, {:already_exists, _table, _node, _type}} ->
-        :ok
+      :ok = Person.create_table()
+      :ok = FTSIndex.create()
     end
 
-    :ok = Person.create_table()
-    :ok = FTSIndex.create()
+    :mnesia.wait_for_tables([Person | FTSIndex.get_tables()], :timer.seconds(600))
+  end
 
-    [Person, FTSIndex.get_tables()]
-    |> List.flatten()
-    |> :mnesia.wait_for_tables(:timer.seconds(600))
+  defp connect_to_cluster() do
+    System.fetch_env!("BOOTSTRAP_NODES")
+    |> String.split(",")
+    |> Enum.each(fn node ->
+      case Node.connect(String.to_atom(node)) do
+        true ->
+          Logger.info("Successfully connected to node #{node}!")
+
+        false ->
+          Logger.info("Fail to connected to node #{node}!")
+
+        :ignored ->
+          Logger.info("Fail to connected to node #{node}!")
+      end
+    end)
   end
 end
