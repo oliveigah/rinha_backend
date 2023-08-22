@@ -89,4 +89,4 @@ ENV PATH=/app/bin/commands:$PATH
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-CMD ["sh", "-c", "rinha_backend eval ReleaseTasks.create_db && rinha_backend eval ReleaseTasks.migrate && rinha_backend start"]
+CMD ["sh", "-c", "rinha_backend start"]

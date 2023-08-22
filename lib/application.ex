@@ -5,6 +5,7 @@ defmodule RinhaBackend.Application do
 
   @impl true
   def start(_type, _args) do
+    ReleaseTasks.migrate()
     connect_to_cluster(:timer.minutes(1))
 
     children = [
