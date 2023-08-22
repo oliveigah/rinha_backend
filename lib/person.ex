@@ -1,114 +1,92 @@
 defmodule Person do
-  alias FTSIndex
-
-  @attr [:id, :apelido, :nome, :nascimento, :stack]
-
-  @str_attr Enum.map(@attr -- [:id], &Atom.to_string/1)
-
-  @fts_attributes [:apelido, :nome, :stack]
-
-  @fts_limit 50
-
-  def create_table() do
-    node_list = [node()]
-
-    result =
-      :mnesia.create_table(__MODULE__,
-        attributes: @attr,
-        disc_copies: node_list,
-        type: :set,
-        index: [:apelido]
-      )
-
-    case result do
-      {:atomic, :ok} ->
-        :ok
-
-      {:aborted, {:already_exists, _table_name}} ->
-        :ok
-    end
+  use Ecto.Schema
+  @primary_key {:id, Ecto.UUID, autogenerate: true}
+  schema "pessoas" do
+    field :apelido, :string
+    field :nome, :string
+    field :nascimento, :string
+    field :stack, {:array, :string}
+    field :fts_col, :string
   end
 
-  def get_str_attr, do: @str_attr
+  def get_str_attr() do
+    [
+      "apelido",
+      "nome",
+      "nascimento",
+      "stack"
+    ]
+  end
 
   def insert(params) do
-    result =
-      :mnesia.transaction(fn ->
-        case :mnesia.index_read(__MODULE__, params.apelido, 3) do
-          [] ->
-            new_id = UUID.uuid4()
+    if Cache.exists?({:apelido, params.apelido}) do
+      {:error, :already_taken}
+    else
+      {:ok, new_p} =
+        %Person{
+          apelido: params.apelido,
+          nome: params.nome,
+          nascimento: params.nascimento,
+          stack: params[:stack] || []
+        }
+        |> add_fts_col()
+        |> RinhaRepo.insert()
 
-            new_data =
-              Enum.map(@attr, fn
-                :id -> new_id
-                :stack -> Map.get(params, :stack, [])
-                key -> Map.fetch!(params, key)
-              end)
+      cached_p = Map.put(new_p, :fts_col, nil)
 
-            :ok = :mnesia.write(List.to_tuple([__MODULE__ | new_data]))
+      # apelido is always on the right node to cache
+      true = Cache.write({:apelido, new_p.apelido}, nil)
 
-            :ok =
-              Enum.each(@fts_attributes, fn att ->
-                FTSIndex.update(att, params[att], new_id)
-              end)
+      # id might not be on the right node for cache so we need to check
+      true =
+        new_p.id
+        |> HttpServer.term_to_node()
+        |> :rpc.call(Cache, :write, [
+          {:id, new_p.id},
+          Map.take(cached_p, [:id, :apelido, :nome, :nascimento, :stack])
+        ])
 
-            new_id
-
-          _ ->
-            :mnesia.abort(:already_taken)
-        end
-      end)
-
-    case result do
-      {:atomic, new_id} -> {:ok, new_id}
-      {:aborted, reason} -> {:error, reason}
+      {:ok, new_p.id}
     end
   end
 
   def fetch(id) do
-    case :mnesia.dirty_read(__MODULE__, id) |> List.first() do
+    # The cache is guarenteed to be consistent because
+    # of the phash trick on the http layer
+    # so we do not need to query the DB
+    case Cache.read({:id, id}) do
       nil ->
         {:error, :not_found}
 
-      data ->
-        [__MODULE__ | vals] = Tuple.to_list(data)
-        {:ok, vals_to_map(vals)}
+      val ->
+        {:ok, val}
     end
   end
 
-  def full_text_search(term) do
-    {result, _} =
-      term
-      |> FTSIndex.get_candidates_for_term()
-      |> Enum.reduce_while({[], 0}, fn {id, attrs}, {acc, counter} ->
-        {:ok, person} = fetch(id)
+  def search(term) do
+    {:ok, result} =
+      RinhaRepo.query("""
+      select id::varchar, apelido, nome, nascimento, stack
+      from pessoas where
+      fts_col ilike '%#{term}%'
+      limit 50
+      """)
 
-        if Enum.any?(attrs, fn attr -> match_text?(person[attr], term) end) do
-          new_acc = [person | acc]
-          new_counter = counter + 1
-
-          if new_counter >= @fts_limit,
-            do: {:halt, {new_acc, new_counter}},
-            else: {:cont, {new_acc, new_counter}}
-        else
-          {:cont, {acc, counter}}
-        end
-      end)
-
-    result
+    cols = Enum.map(result.columns, &String.to_existing_atom/1)
+    Enum.map(result.rows, fn e -> Enum.zip(cols, e) |> Map.new() end)
   end
 
-  def count(), do: :mnesia.table_info(__MODULE__, :size)
-
-  def clear_tables() do
-    :ok = FTSIndex.clear_tables()
-    {:atomic, :ok} = :mnesia.clear_table(__MODULE__)
+  def count() do
+    {:ok, result} = RinhaRepo.query("select count(1) from pessoas")
+    result.rows |> List.first() |> List.first()
   end
 
-  defp vals_to_map(vals), do: @attr |> Enum.zip(vals) |> Map.new()
+  defp add_fts_col(%__MODULE__{} = p) do
+    val =
+      [p.apelido, p.nome, p.stack]
+      |> List.flatten()
+      |> Enum.join(" ")
 
-  defp match_text?(val, text) when is_list(val),
-    do: Enum.any?(val, fn v -> match_text?(v, text) end)
-
-  defp match_text?(val, text) when is_bitstring(val), do: String.contains?(val, text)
+    Map.put(p, :fts_col, val)
+  end
 end

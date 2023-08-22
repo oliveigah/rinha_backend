@@ -1,9 +1,9 @@
 defmodule RinhaBackendTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   setup do
-    {:atomic, :ok} = Person.clear_tables()
-    :ok
+    Cache.clear()
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(RinhaRepo)
   end
 
   test "success insert and fetch" do
@@ -15,7 +15,6 @@ defmodule RinhaBackendTest do
     }
 
     assert {:ok, id} = Person.insert(input)
-    assert {:ok, _} = UUID.info(id)
     assert {:ok, data} = Person.fetch(id)
     assert data.apelido == input.apelido
 
@@ -61,37 +60,37 @@ defmodule RinhaBackendTest do
         p
       end)
 
-    assert result = Person.full_text_search("no_exist")
+    assert result = Person.search("no_exist")
     assert length(result) == 0
 
-    assert result = Person.full_text_search("oliveigah")
+    assert result = Person.search("oliveigah")
     assert length(result) == 1
     assert p1 in result
 
-    assert result = Person.full_text_search("ah")
+    assert result = Person.search("ah")
     assert length(result) == 3
     assert p1 in result
     assert p3 in result
     assert p4 in result
 
-    assert result = Person.full_text_search("el")
+    assert result = Person.search("el")
     assert length(result) == 3
     assert p1 in result
     assert p2 in result
     assert p4 in result
 
-    assert result = Person.full_text_search("a")
+    assert result = Person.search("a")
     assert length(result) == 4
     assert p1 in result
     assert p2 in result
     assert p4 in result
     assert p4 in result
 
-    assert result = Person.full_text_search("some_other_stack")
+    assert result = Person.search("some_other_stack")
     assert length(result) == 1
     assert p2 in result
 
-    assert result = Person.full_text_search("someone")
+    assert result = Person.search("someone")
     assert length(result) == 1
     assert p5 in result
   end

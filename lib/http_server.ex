@@ -26,8 +26,8 @@ defmodule HttpServer do
   def rpc(Person, :insert, [body]),
     do: body.apelido |> term_to_node() |> :rpc.call(Person, :insert, [body])
 
-  def rpc(Person, :full_text_search, [val]),
-    do: val |> term_to_node() |> :rpc.call(Person, :full_text_search, [val])
+  def rpc(Person, :search, [val]),
+    do: val |> term_to_node() |> :rpc.call(Person, :search, [val])
 
   def rpc(Person, :fetch, [id]),
     do: id |> term_to_node() |> :rpc.call(Person, :fetch, [id])
@@ -91,7 +91,7 @@ defmodule HttpServer do
 
     case conn.query_params do
       %{"t" => val} ->
-        data = rpc(Person, :full_text_search, [val])
+        data = Person.search(val)
 
         conn
         |> put_resp_content_type("application/json")
@@ -115,7 +115,7 @@ defmodule HttpServer do
   end
 
   get "/contagem-pessoas" do
-    send_resp(conn, 200, rpc(Person, :count) |> Integer.to_string())
+    send_resp(conn, 200, Person.count() |> Integer.to_string())
   end
 
   match _ do
