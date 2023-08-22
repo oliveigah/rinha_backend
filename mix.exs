@@ -31,7 +31,7 @@ defmodule RinhaBackend.MixProject do
     [
       {:plug, "~> 1.14"},
       {:bandit, "~> 1.0-pre"},
-      {:jsonrs, "~> 0.3"},
+      {:jason, "~> 1.4"},
       {:ecto_sql, "~> 3.0"},
       {:postgrex, ">= 0.0.0"}
     ]

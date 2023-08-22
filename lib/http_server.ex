@@ -6,7 +6,7 @@ defmodule HttpServer do
   plug(Plug.Parsers,
     parsers: [:json],
     pass: ["application/json"],
-    json_decoder: Jsonrs
+    json_decoder: Jason
   )
 
   plug(:dispatch)
@@ -95,7 +95,7 @@ defmodule HttpServer do
 
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(200, Jsonrs.encode!(data))
+        |> send_resp(200, Jason.encode!(data))
 
       _ ->
         send_resp(conn, 400, "")
@@ -107,7 +107,7 @@ defmodule HttpServer do
       {:ok, data} ->
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(200, Jsonrs.encode!(data))
+        |> send_resp(200, Jason.encode!(data))
 
       {:error, :not_found} ->
         send_resp(conn, 404, "")
