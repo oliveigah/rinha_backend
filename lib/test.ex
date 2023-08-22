@@ -9,7 +9,10 @@ defmodule Test do
         nascimento: "1995-09-12"
       }
 
-      Person.insert(input)
+      {:ok, _} =
+        input.apelido
+        |> HttpServer.term_to_node()
+        |> :rpc.call(Person, :insert, [input])
     end)
   end
 end

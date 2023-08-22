@@ -38,6 +38,7 @@ RUN mkdir config
 COPY config config/
 RUN mix deps.compile
 
+COPY priv priv
 COPY lib lib
 
 # Compile the release
@@ -87,4 +88,5 @@ USER nobody
 ENV PATH=/app/bin/commands:$PATH
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["rinha_backend", "start"]
+
+CMD ["sh", "-c", "rinha_backend eval ReleaseTasks.create_db && rinha_backend eval ReleaseTasks.migrate && rinha_backend start"]
