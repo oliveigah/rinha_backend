@@ -18,7 +18,7 @@ services:
           memory: '1GB'
 
   api1:
-    image: oliveigah/rinha-backend:with_postgres_nginx_v2
+    image: oliveigah/rinha-backend:final
     depends_on:
       - database
     hostname: api1.com
@@ -38,7 +38,7 @@ services:
 
 
   api2:
-    image: oliveigah/rinha-backend:with_postgres_nginx_v2
+    image: oliveigah/rinha-backend:final
     depends_on:
       - api1
     hostname: api2.com
@@ -64,7 +64,7 @@ services:
       - api1
       - api2
     ports:
-      - "3000:9999"
+      - "9999:9999"
     deploy:
       resources:
         limits:

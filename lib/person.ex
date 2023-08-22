@@ -5,8 +5,7 @@ defmodule Person do
     field :apelido, :string
     field :nome, :string
     field :nascimento, :string
-    field :stack, {:array, :string}
-    field :fts_col, :string
+    field :stack, :string
   end
 
   def get_str_attr() do
@@ -27,12 +26,11 @@ defmodule Person do
           apelido: params.apelido,
           nome: params.nome,
           nascimento: params.nascimento,
-          stack: params[:stack] || []
+          stack: handle_stack_in(params[:stack])
         }
-        |> add_fts_col()
         |> RinhaRepo.insert()
 
-      cached_p = Map.put(new_p, :fts_col, nil)
+      cached_p = Map.put(new_p, :stack, handle_stack_out(new_p.stack))
 
       # apelido is always on the right node to cache
       true = Cache.write({:apelido, new_p.apelido}, nil)
@@ -68,12 +66,14 @@ defmodule Person do
       RinhaRepo.query("""
       select id::varchar, apelido, nome, nascimento, stack
       from pessoas where
-      fts_col ilike '%#{term}%'
+      (apelido || ' ' || nome || ' ' || stack) ilike '%#{term}%'
       limit 50
       """)
 
     cols = Enum.map(result.columns, &String.to_existing_atom/1)
+
     Enum.map(result.rows, fn e -> Enum.zip(cols, e) |> Map.new() end)
+    |> Enum.map(fn p -> Map.replace(p, :stack, handle_stack_out(p.stack)) end)
   end
 
   def count() do
@@ -81,12 +81,9 @@ defmodule Person do
     result.rows |> List.first() |> List.first()
   end
 
-  defp add_fts_col(%__MODULE__{} = p) do
-    val =
-      [p.apelido, p.nome, p.stack]
-      |> List.flatten()
-      |> Enum.join(" ")
+  defp handle_stack_out(""), do: []
+  defp handle_stack_out(string), do: String.split(string, " ")
 
-    Map.put(p, :fts_col, val)
-  end
+  defp handle_stack_in(nil), do: ""
+  defp handle_stack_in(list), do: Enum.join(list, " ")
 end
