@@ -5,7 +5,7 @@ config :rinha_backend, RinhaRepo,
   username: "user",
   password: "pass",
   hostname: "localhost",
-  pool_size: 10
+  pool_size: 50
 
 config :rinha_backend, ecto_repos: [RinhaRepo]
 

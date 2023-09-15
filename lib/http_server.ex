@@ -78,10 +78,10 @@ defmodule HttpServer do
             |> send_resp(201, id)
 
           {:error, :already_taken} ->
-            send_resp(conn, 422, "already taken")
+            send_resp(conn, 422, "")
 
           err ->
-            send_resp(conn, 500, "unexpected error #{inspect(err)}")
+            send_resp(conn, 500, "")
         end
     end
   end

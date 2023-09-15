@@ -2,7 +2,9 @@ version: '3.5'
 services:
   database:
     image: postgres:latest
-    command: postgres -c 'max_connections=450'
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    volumes:
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pass
@@ -17,7 +19,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.85'
+          cpus: '0.65'
           memory: '1.9GB'
 
   api1:
@@ -33,13 +35,13 @@ services:
       RELEASE_NODE: "api1@localhost"
       RELEASE_DISTRIBUTION: "sname"
       BOOTSTRAP_NODES: "api2@localhost"
-      DB_CONNS: 150
+      DB_CONNS: 60
     healthcheck:
       test: curl -f http://localhost:3000
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: '0.35'
           memory: '0.4GB'
 
   api2:
@@ -55,13 +57,13 @@ services:
       RELEASE_NODE: "api2@localhost"
       RELEASE_DISTRIBUTION: "sname"
       BOOTSTRAP_NODES: "api1@localhost"
-      DB_CONNS: 150
+      DB_CONNS: 60
     healthcheck:
       test: curl -f http://localhost:3001
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: '0.35'
           memory: '0.4GB'
 
   nginx:
@@ -78,5 +80,20 @@ services:
           cpus: '0.15'
           memory: '0.3GB'
 
+  pgadmin:
+    container_name: pgadmin
+    hostname: pgadmin
+    image: dpage/pgadmin4:7.6
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_LISTEN_PORT=5050
+    depends_on:
+      - database
+    network_mode: "host"
+
 volumes:
   database:
+  pgadmin:

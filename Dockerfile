@@ -89,4 +89,4 @@ ENV PATH=/app/bin/commands:$PATH
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-CMD ["sh", "-c", "rinha_backend start"]
+CMD ["sh", "-c", "sleep 15; rinha_backend start"]
