@@ -13,7 +13,7 @@ defmodule RinhaRepo.Migrations.AddPessoasTable do
     execute "CREATE EXTENSION IF NOT EXISTS pg_trgm"
 
     execute """
-    CREATE INDEX pessoas_fts_idx ON pessoas USING GIST ((apelido || ' ' || nome || ' ' || stack) gist_trgm_ops);
+    CREATE INDEX pessoas_fts_idx ON pessoas USING GIST ((apelido || ' ' || nome || ' ' || stack) gist_trgm_ops(siglen=1024));
     """
   end
 end

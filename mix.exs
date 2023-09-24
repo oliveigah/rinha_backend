@@ -22,7 +22,7 @@ defmodule RinhaBackend.MixProject do
 
   defp aliases do
     [
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      test: ["ecto.drop --quiet", "ecto.create --quiet", "ecto.migrate --quiet", "test"],
     ]
   end
 

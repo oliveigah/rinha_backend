@@ -6,7 +6,8 @@ defmodule Cache do
       :set,
       :public,
       :named_table,
-      decentralized_counters: true
+      decentralized_counters: true,
+      write_concurrency: true
     ])
 
     {:ok, nil}

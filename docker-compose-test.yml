@@ -1,0 +1,22 @@
+version: '3.5'
+services:
+  database:
+    image: postgres:latest
+    command: postgres -c config_file="/etc/postgresql.conf"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=rinha_backend
+    ports:
+      - 5432:5432
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./postgresql.conf:/etc/postgresql.conf
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: '2.1GB'
+
+volumes:
+  database:

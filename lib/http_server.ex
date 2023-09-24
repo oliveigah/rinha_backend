@@ -59,7 +59,7 @@ defmodule HttpServer do
       ],
       stack: [
         fn v -> is_nil(v) || is_list(v) end,
-        fn v -> Enum.all?(v || [], &is_bitstring/1) end
+        fn v -> Enum.all?(v || [], fn e -> is_bitstring(e) and String.length(e) <= 32 end) end
       ]
     }
 
